@@ -42,12 +42,17 @@ class Databaase:
 
     def insert_product(self, product_name, product_category, product_quantity, product_price):
         """Insert a new product into the product table."""
-        self.cursor.execute("""
-            INSERT INTO product (product_name, product_category, product_quantity, product_price)
-            VALUES (?, ?, ?, ?)
-        """, (product_name, product_category, product_quantity, product_price))
-        self.connection.commit()  # Commit the changes to the database
-    
+        try:
+            self.cursor.execute("""
+                INSERT INTO product (product_name, product_category, product_quantity, product_price)
+                VALUES (?, ?, ?, ?)
+            """, (product_name, product_category, product_quantity, product_price))
+            self.connection.commit()  # Commit the changes to the database
+            print(f"Successfully inserted product: {product_name}, Category: {product_category}, Quantity: {product_quantity}, Price: {product_price}")
+        except sqlite3.Error as e:
+            print(f"Error inserting product: {e}")  # Log the error
+            raise  # Optionally re-raise the exception to handle it further up the call stack
+
     def fetch_all_products(self):
         """Fetch all products from the product table."""
         self.cursor.execute("SELECT product_name, product_category, product_quantity, product_price FROM product")
@@ -55,9 +60,14 @@ class Databaase:
 
     def delete_product(self, product_name):
         """Delete a product from the product table."""
-        self.cursor.execute("DELETE FROM product WHERE product_name=?", (product_name,))
-        self.connection.commit()  # Commit the changes to the database
-    
+        try:
+            self.cursor.execute("DELETE FROM product WHERE product_name=?", (product_name,))
+            self.connection.commit()  # Commit the changes to the database
+            print(f"Successfully deleted product: {product_name}")  # Debugging line
+        except sqlite3.Error as e:
+            print(f"Error deleting product: {e}")  # Log the error
+            raise  # Optionally re-raise the exception to handle it further up the call stack
+
     def update_product(self, current_product_name, new_product_name, new_category, new_quantity, new_price):
         """Update an existing product in the product table."""
         self.cursor.execute("""
@@ -66,12 +76,12 @@ class Databaase:
             WHERE product_name = ?
         """, (new_product_name, new_category, new_quantity, new_price, current_product_name))
         self.connection.commit()  # Commit the changes to the database
-    
+
     def fetch_product_by_name(self, product_name):
-        """Fetch products from the product table that match the given name."""
+        """Fetch products from the product table that match the given name exactly (case-sensitive)."""
         try:
-            # Execute the query with a parameterized statement to prevent SQL injection
-            self.cursor.execute("SELECT product_name, product_category, product_quantity, product_price FROM product WHERE product_name LIKE ?", (f'%{product_name}%',))
+            # Use the equality operator for an exact case-sensitive match
+            self.cursor.execute("SELECT product_name, product_category, product_quantity, product_price FROM product WHERE product_name = ?", (product_name,))
             
             # Fetch all matching records
             results = self.cursor.fetchall()
@@ -83,7 +93,13 @@ class Databaase:
         except Exception as e:
             print(f"Error fetching products: {e}")  # Debug: Print any errors
             return []  # Return an empty list in case of error
-
+    
+    def get_current_stock(self, product_name):
+        """Fetch the current stock for a given product name."""
+        self.cursor.execute("SELECT product_quantity FROM product WHERE product_name = ?", (product_name,))
+        result = self.cursor.fetchone()
+        return result[0] if result else 0
+    
     def close(self):
         """Close the database connection."""
         self.connection.close()
